@@ -1,30 +1,44 @@
 <?php require 'config/db.php';
-$phone = $_SESSION['pending_phone'] ?? '';
-$demo  = $_SESSION['demo_code'] ?? '';
+if (isLoggedIn()) { header('Location: profile.php'); exit; }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $code = trim($_POST['code']);
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE phone = ? AND sms_code = ?");
-    $stmt->execute([$phone, $code]);
+    $email = trim($_POST['email']);
+    $password = $_POST['password'];
+
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
+    $stmt->execute([$email]);
     $user = $stmt->fetch();
-    if ($user) {
+
+    if ($user && password_verify($password, $user['password'])) {
         $_SESSION['user_id'] = $user['id'];
-        $_SESSION['user_name'] = $user['name'] ?: $phone;
+        $_SESSION['user_name'] = $user['name'];
         $_SESSION['role'] = $user['role'];
-        unset($_SESSION['pending_phone'], $_SESSION['demo_code']);
-        header('Location: index.php');
+        $_SESSION['bonus_balance'] = $user['bonus_balance'];
+        header('Location: profile.php');
         exit;
+    } else {
+        $error = "Неверный email или пароль";
     }
-    $error = 'Неверный код';
 }
 ?>
-<!DOCTYPE html><html><head><meta charset="utf-8"><title>Вход</title>
+<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Вход</title>
 <link rel="stylesheet" href="assets/css/style.css"></head><body>
-<h2>Вход по SMS-коду</h2>
-<?php if (!empty($error)) echo "<p style='color:red'>$error</p>"; ?>
-<?php if ($demo) echo "<p>Демо-код: <b>$demo</b></p>"; ?>
-<form method="post">
-    <input name="code" placeholder="Код из SMS" required>
-    <button>Войти</button>
-</form>
+<?php include 'includes/header.php'; ?>
+<div class="container auth-container">
+    <div class="auth-card">
+        <h1>Вход</h1>
+        <?php if (isset($_GET['registered'])) echo "<p style='color:#2e7d32; margin-bottom:15px;'>Аккаунт создан! Войдите.</p>"; ?>
+        <?php if (!empty($error)) echo "<p style='color:#e53935; margin-bottom:15px;'>$error</p>"; ?>
+        <form method="post">
+            <label>Email</label>
+            <input type="email" name="email" required>
+            
+            <label>Пароль</label>
+            <input type="password" name="password" required>
+            
+            <button type="submit" class="btn">Войти</button>
+        </form>
+        <p class="auth-link">Нет аккаунта? <a href="register.php">Зарегистрироваться</a></p>
+    </div>
+</div>
 </body></html>
